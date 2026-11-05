@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOS events</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+/* Two areas: the registration page (open to the postes) and the records page (PIN required). */
+:root {
+  --bg: #F2F5F9;
+  --surface: #FFFFFF;
+  --surface-2: #F7F9FC;
+  --ink: #0D1B2F;
+  --muted: #5A6B82;
+  --line: #DAE1EB;
+  --brand: #14306B;
+  --signal: #FF5A1F;
+  --participant: #1F6FEB;
+  --organisateur: #0F9D6B;
+  --sponsor: #D98A00;
+  --invite: #8A3FD1;
+  --remarque: #E0457B;
+  --danger: #C23030;
+  --shadow: 0 1px 2px rgba(13,27,47,.05), 0 8px 24px rgba(13,27,47,.06);
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "DM Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0A111E;
+    --surface: #111B2D;
+    --surface-2: #0E1727;
+    --ink: #E9EFF8;
+    --muted: #93A3BA;
+    --line: #22304A;
+    --brand: #8FB0FF;
+    --signal: #FF7440;
+    --danger: #FF7A7A;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--participant); outline-offset: 2px; border-radius: 6px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; }
+
+/* Top bar */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; padding-block: 20px; }
+.top-right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
+.brand-mark { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--brand); color: #fff; flex: none; }
+@media (prefers-color-scheme: dark) { .brand-mark { color: #0A111E; } }
+.brand-mark svg { width: 30px; height: auto; display: block; }
+.brand-name { font-family: var(--font-display); font-weight: 800; font-size: 1.35rem; letter-spacing: -.01em; }
+.brand-name span { color: var(--signal); }
+.poste-badge { font-family: var(--font-mono); font-weight: 600; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--signal); color: #fff; }
+
+/* Intro */
+.intro { padding-block: 20px 28px; max-width: 640px; }
+.eyebrow { font-family: var(--font-mono); font-size: .75rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--signal); }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(2rem, 5vw, 3.1rem); line-height: 1.05; letter-spacing: -.025em; margin: 10px 0 12px; text-wrap: balance; }
+.intro p { margin: 0; color: var(--muted); font-size: 1.05rem; max-width: 56ch; }
+
+/* Registration layout */
+.grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 24px; align-items: start; }
+@media (max-width: 880px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); padding: 28px; }
+@media (max-width: 480px) { .card { padding: 20px; } }
+.card h2 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; letter-spacing: -.01em; }
+.card .hint { margin: 0 0 22px; color: var(--muted); font-size: .92rem; }
+
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 520px) { .fields { grid-template-columns: 1fr; } }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label, .legend { font-size: .82rem; font-weight: 600; letter-spacing: .02em; color: var(--muted); }
+.field input[type=text] {
+  width: 100%; height: 48px; padding: 0 14px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--surface-2); font-size: 1rem;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.field input[type=text]::placeholder { color: var(--muted); opacity: .6; }
+.field input[type=text]:hover { border-color: var(--muted); }
+.field input[type=text]:focus { outline: none; border-color: var(--participant); background: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--participant) 22%, transparent); }
+.field.invalid input { border-color: var(--danger); }
+.err { color: var(--danger); font-size: .82rem; min-height: 1.1em; }
+.atelier { margin-top: 18px; }
+.atelier .choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .atelier .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.atelier-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.atelier-head .legend { margin: 0; }
+.link-btn { background: none; border: 0; padding: 4px 2px; font-weight: 600; font-size: .85rem; color: var(--participant); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:hover { color: var(--ink); }
+.atelier-tag { white-space: normal; display: inline-block; max-width: 96px; line-height: 1.35; }
+.choice { position: relative; }
+.choice input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.choice span { display: flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 8px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface-2); font-weight: 600; font-size: .92rem; text-align: center; transition: border-color .15s, background .15s, color .15s; }
+.choice:hover span { border-color: var(--muted); }
+.choice input:checked + span { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.choice input:focus-visible + span { outline: 3px solid var(--participant); outline-offset: 2px; }
+.note-field { margin-top: 18px; }
+.field textarea {
+  width: 100%; min-height: 104px; padding: 12px 14px; border-radius: 10px; resize: vertical;
+  border: 1.5px solid var(--line); background: var(--surface-2); font: inherit; font-size: 1rem; line-height: 1.45;
+  transition: border-color .15s, background .15s, box-shadow .15s;
+}
+.field textarea::placeholder { color: var(--muted); opacity: .6; }
+.field textarea:hover { border-color: var(--muted); }
+.field textarea:focus { outline: none; border-color: var(--remarque); background: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--remarque) 22%, transparent); }
+.field.invalid textarea { border-color: var(--danger); }
+.note-count { align-self: flex-end; font-family: var(--font-mono); font-size: .75rem; color: var(--muted); }
+.amount { margin-top: 18px; }
+.amount .suffix { position: relative; }
+.amount .suffix input { padding-right: 56px; font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.amount .suffix span { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); font-weight: 600; font-size: .85rem; color: var(--muted); pointer-events: none; }
+
+fieldset { border: 0; padding: 0; margin: 18px 0 0; min-width: 0; }
+.legend { padding: 0; margin-bottom: 8px; display: block; }
+.roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.role { position: relative; }
+.role input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.role .opt {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px;
+  border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface-2);
+  font-weight: 600; transition: border-color .15s, background .15s;
+}
+.role .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--c); flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 22%, transparent); }
+.role:hover .opt { border-color: var(--muted); }
+.role input:checked + .opt { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
+.role input:focus-visible + .opt { outline: 3px solid var(--participant); outline-offset: 2px; }
+.r-participant { --c: var(--participant); }
+.r-organisateur { --c: var(--organisateur); }
+.r-sponsor { --c: var(--sponsor); }
+.r-invite { --c: var(--invite); }
+.r-remarque { --c: var(--remarque); }
+.role.wide { grid-column: 1 / -1; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 50px; padding: 0 22px; border-radius: 12px; border: 1.5px solid transparent;
+  font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform .1s, background .15s, border-color .15s, opacity .15s, color .15s;
+}
+.btn:active { transform: translateY(1px); }
+.btn-primary { background: var(--signal); color: #fff; flex: 1 1 180px; font-weight: 700; }
+.btn-primary:hover { background: color-mix(in srgb, var(--signal) 88%, #000); }
+.btn-solid { background: var(--ink); color: var(--bg); }
+.btn-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 85%, var(--bg)); }
+.btn-ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--ink); }
+.btn-ghost.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.btn-ghost.danger:hover:not(:disabled) { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: color-mix(in srgb, var(--danger) 88%, #000); }
+.btn-sm { height: 44px; padding: 0 16px; font-size: .92rem; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 18px; height: 18px; flex: none; }
+
+/* Role colors */
+.colors { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.color-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface-2); min-width: 0; }
+.color-row input[type=color] { width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: none; cursor: pointer; flex: none; }
+.color-row input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+.color-row input[type=color]::-webkit-color-swatch { border: 2px solid var(--line); border-radius: 10px; }
+.color-row input[type=color]::-moz-color-swatch { border: 2px solid var(--line); border-radius: 10px; }
+.color-row .nm { font-weight: 600; line-height: 1.2; }
+.color-row .hex { font-family: var(--font-mono); font-size: .78rem; color: var(--muted); text-transform: uppercase; }
+.colors-foot { margin-top: 16px; }
+
+/* Preview column */
+.preview { position: sticky; top: 16px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+@media (max-width: 880px) { .preview { position: static; } }
+.preview-label { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
+.preview-stage { width: 100%; display: grid; place-items: center; padding: 28px 12px; border-radius: 18px; border: 1px dashed var(--line); background:
+  radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0) 0 0 / 18px 18px; }
+
+/* Badge: a paper object, so its colors do not follow the page theme. Size is set in em so print can scale it. */
+.badge {
+  --b-ink: #0D1B2F; --b-muted: #5A6B82;
+  font-size: 15px; width: 20em; height: 26.67em; background: #fff; color: var(--b-ink);
+  border-radius: 1em; overflow: hidden; display: flex; flex-direction: column; position: relative;
+  box-shadow: 0 2px 4px rgba(13,27,47,.12), 0 18px 40px rgba(13,27,47,.18);
+  font-family: var(--font-body);
+}
+.badge-hole { width: 4.6em; height: .9em; border-radius: 1em; background: #D5DCE7; box-shadow: inset 0 1px 2px rgba(13,27,47,.25); margin: 1.4em auto 0; flex: none; }
+.badge-body { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 1em 1.4em 0; gap: .2em; min-height: 0; }
+.badge-first { font-family: var(--font-display); font-weight: 800; font-size: 2.7em; line-height: 1.05; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.badge-last { font-family: var(--font-display); font-weight: 600; font-size: 1.5em; letter-spacing: .08em; color: var(--b-muted); overflow-wrap: anywhere; }
+.badge .ph { opacity: .28; }
+.badge-role { margin-top: .9em; padding-top: .8em; border-top: .1em solid #E3E8EF; min-width: 55%; font-family: var(--font-display); font-weight: 800; font-size: 1.25em; letter-spacing: .2em; text-transform: uppercase; line-height: 1; color: var(--b-ink); }
+.badge-atelier { margin-top: .8em; padding: .4em 1em; border: .12em solid var(--b-ink); border-radius: 2em; font-family: var(--font-display); font-weight: 700; font-size: 1em; letter-spacing: .08em; text-transform: uppercase; line-height: 1.2; }
+.badge-paid { margin-top: 1.1em; display: flex; flex-direction: column; align-items: center; gap: .25em; }
+.badge-paid span { font-family: var(--font-mono); font-size: .68em; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--b-muted); }
+.badge-paid strong { font-family: var(--font-mono); font-size: 1.4em; font-weight: 700; letter-spacing: 0; font-variant-numeric: tabular-nums; }
+.badge-foot { display: flex; justify-content: center; padding: 1em 1.4em 1.6em; flex: none; }
+.badge-meta { display: flex; gap: 1.4em; font-family: var(--font-mono); font-weight: 600; font-size: .75em; letter-spacing: .06em; color: var(--b-muted); }
+
+/* Records page */
+.postes-sum { margin-top: 8px; }
+.sec-title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 4px; }
+.sec-title small { font-family: var(--font-mono); font-size: .9rem; color: var(--muted); font-weight: 600; margin-left: 8px; }
+.sub { margin: 0 0 16px; color: var(--muted); font-size: .92rem; }
+.poste-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.poste-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 16px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 16px; cursor: pointer; box-shadow: var(--shadow); min-width: 0; }
+.poste-card:hover { border-color: var(--muted); }
+.poste-card[aria-pressed=true] { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 14%, transparent); }
+.pc-name { font-weight: 600; }
+.pc-sum { font-family: var(--font-mono); font-weight: 700; font-size: 1.2rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pc-count { color: var(--muted); font-size: .85rem; }
+
+.listing { margin-top: 40px; }
+.list-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.list-head .sec-title { margin: 0; }
+.list-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.search { position: relative; flex: 1 1 220px; min-width: 0; }
+.search input { width: 100%; height: 44px; padding: 0 14px 0 40px; border-radius: 10px; border: 1.5px solid var(--line); background: var(--surface); }
+.search input:focus { outline: none; border-color: var(--participant); box-shadow: 0 0 0 4px color-mix(in srgb, var(--participant) 22%, transparent); }
+.search svg { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--muted); }
+
+.chips-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { height: 38px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 600; font-size: .9rem; display: inline-flex; align-items: center; gap: 8px; }
+.chip .n { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); }
+.chip:hover { border-color: var(--muted); }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chip[aria-pressed=true] .n { color: inherit; opacity: .75; }
+.total { display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); }
+.total span { color: var(--muted); font-size: .85rem; font-weight: 600; }
+.total strong { font-family: var(--font-mono); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+.table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+.note-cell { min-width: 140px; max-width: 260px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .92rem; }
+th { text-align: left; font-size: .75rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 14px 10px; border-bottom: 1px solid var(--line); background: var(--surface-2); white-space: nowrap; }
+td { padding: 14px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+td:first-child, th:first-child { padding-left: 16px; }
+td:last-child, th:last-child { padding-right: 16px; }
+th.r, td.r { text-align: right; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: var(--surface-2); }
+.num { font-family: var(--font-mono); font-size: .85rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.who { font-weight: 600; }
+.who span { color: var(--muted); font-weight: 500; letter-spacing: .04em; margin-left: 4px; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 10px; border-radius: 999px; font-size: .85rem; font-weight: 600; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--ink); white-space: nowrap; }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.poste-tag { font-family: var(--font-mono); font-size: .82rem; font-weight: 600; padding: 3px 10px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); white-space: nowrap; }
+.money { font-family: var(--font-mono); font-weight: 600; font-size: .92rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash { color: var(--muted); font-weight: 400; }
+.when { color: var(--muted); font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.mini { height: 36px; padding: 0 10px; border-radius: 8px; border: 1.5px solid var(--line); background: transparent; cursor: pointer; font-weight: 600; font-size: .85rem; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.mini svg { width: 15px; height: 15px; }
+.mini:hover { border-color: var(--ink); }
+.mini.del { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--line)); }
+.mini.del:hover { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); }
+
+.empty { padding: 56px 24px; text-align: center; color: var(--muted); }
+.empty svg { width: 96px; height: auto; color: var(--line); margin-bottom: 12px; }
+.empty strong { display: block; color: var(--ink); font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 4px; }
+.colors-card { margin-top: 40px; }
+
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .85rem; }
+
+/* Poste picker screen */
+.screen { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: var(--bg); padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
+.screen-card { width: 100%; max-width: 720px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow); padding: 36px 32px 32px; text-align: center; }
+@media (max-width: 480px) { .screen-card { padding: 28px 20px 24px; } }
+.screen-card .brand-mark { margin: 0 auto 20px; width: 56px; height: 56px; border-radius: 16px; }
+.screen-card .brand-mark svg { width: 38px; }
+.screen-card h1 { font-size: 1.7rem; margin: 0 0 8px; letter-spacing: -.02em; }
+.screen-card p { margin: 0 0 22px; color: var(--muted); font-size: .95rem; }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 520px) { .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 18px 16px; border: 1.5px solid var(--line); border-radius: 16px; background: var(--surface-2); cursor: pointer; min-width: 0; transition: border-color .15s, transform .15s, background .15s; }
+.tile:hover { border-color: var(--signal); background: var(--surface); transform: translateY(-2px); }
+.t-label { font-family: var(--font-mono); font-size: .7rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.t-num { font-family: var(--font-display); font-weight: 800; font-size: 2.8rem; line-height: 1; letter-spacing: -.03em; }
+.screen-card.narrow { max-width: 400px; }
+.screen-card .btn-full { width: 100%; margin-top: 14px; }
+.screen-card.bad { animation: nudge .35s; }
+
+/* Modals */
+.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(13,27,47,.55); }
+.modal-card { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,.35); padding: 26px; }
+.modal-card h2 { font-family: var(--font-display); font-size: 1.3rem; font-weight: 800; margin: 0 0 8px; letter-spacing: -.01em; }
+.modal-card p { margin: 0 0 18px; color: var(--muted); }
+.modal-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+.modal-actions .btn { height: 46px; }
+.pin-input { width: 100%; height: 58px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface-2); text-align: center; font-family: var(--font-mono); font-weight: 600; font-size: 1.35rem; letter-spacing: .35em; text-transform: uppercase; padding: 0 12px 0 calc(12px + .35em); }
+.pin-input:focus { outline: none; border-color: var(--participant); background: var(--surface); box-shadow: 0 0 0 4px color-mix(in srgb, var(--participant) 22%, transparent); }
+.pin-msg { min-height: 1.4em; margin-top: 12px; color: var(--danger); font-size: .9rem; text-align: center; }
+.modal-card.bad { animation: nudge .35s; }
+@keyframes nudge { 20% { transform: translateX(-8px); } 50% { transform: translateX(8px); } 80% { transform: translateX(-4px); } }
+
+/* Toast */
+.toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 0px)); transform: translate(-50%, 24px); opacity: 0; pointer-events: none;
+  background: var(--ink); color: var(--bg); padding: 12px 14px 12px 18px; border-radius: 12px; display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px); box-shadow: 0 12px 32px rgba(0,0,0,.25); transition: opacity .2s, transform .2s; z-index: 70; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button { background: transparent; border: 1.5px solid color-mix(in srgb, var(--bg) 55%, transparent); color: inherit; border-radius: 8px; height: 34px; padding: 0 12px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.toast button:hover { border-color: var(--bg); }
+
+/* Print: only the badge (or the fallback list) leaves the page */
+#print-sheet { display: none; }
+@media print {
+  @page { size: A4; margin: 14mm; }
+  html, body { background: #fff !important; padding: 0 !important; }
+  .wrap, .toast, .screen, .modal { display: none !important; }
+  #print-sheet { display: flex; justify-content: center; }
+  #print-sheet.is-list { display: block; }
+  #print-sheet .badge { font-size: 4.5mm; box-shadow: none; border: .3mm dashed #8A97AB; border-radius: 3mm; }
+  .print-list { font-family: Arial, sans-serif; color: #000; }
+  .print-list h1 { font-size: 20pt; margin: 0 0 4mm; color: #000; }
+  .print-list table { min-width: 0; width: 100%; border-collapse: collapse; font-size: 10pt; }
+  .print-list th, .print-list td { color: #000; background: #fff; border: .2mm solid #bbb; padding: 2mm 3mm; text-align: left; letter-spacing: 0; text-transform: none; }
+  .print-list th { background: #eee; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<noscript><p style="margin:0;padding:14px 16px;background:#C23030;color:#fff;font-family:sans-serif">JavaScript est désactivé. Ouvrez ce fichier directement dans Chrome, Edge ou Firefox.</p></noscript>
+
+<!-- Front PIN screen: the first thing anyone sees -->
+<div class="screen" id="lock">
+  <div class="screen-card narrow" id="lockCard">
+    <span class="brand-mark">
+      <svg viewBox="0 0 68 8" aria-hidden="true" fill="currentColor"><circle cx="2" cy="4" r="1.7"/><circle cx="8" cy="4" r="1.7"/><circle cx="14" cy="4" r="1.7"/><rect x="20" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="30" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="40" y="2.3" width="7" height="3.4" rx="1.7"/><circle cx="53" cy="4" r="1.7"/><circle cx="59" cy="4" r="1.7"/><circle cx="65" cy="4" r="1.7"/></svg>
+    </span>
+    <h1>Accès réservé</h1>
+    <p>Saisissez le code PIN pour entrer sur SOS events.</p>
+    <label for="pin" style="position:absolute;left:-9999px">Code PIN</label>
+    <input type="password" id="pin" class="pin-input" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="•••••">
+    <div class="pin-msg" id="pinMsg" role="alert"></div>
+    <button type="button" class="btn btn-primary btn-full" id="pinGo">Entrer</button>
+  </div>
+</div>
+
+<!-- Poste picker -->
+<div class="screen" id="postes" hidden>
+  <div class="screen-card">
+    <span class="brand-mark">
+      <svg viewBox="0 0 68 8" aria-hidden="true" fill="currentColor"><circle cx="2" cy="4" r="1.7"/><circle cx="8" cy="4" r="1.7"/><circle cx="14" cy="4" r="1.7"/><rect x="20" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="30" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="40" y="2.3" width="7" height="3.4" rx="1.7"/><circle cx="53" cy="4" r="1.7"/><circle cx="59" cy="4" r="1.7"/><circle cx="65" cy="4" r="1.7"/></svg>
+    </span>
+    <h1>Choisissez votre poste</h1>
+    <p>Chaque inscription sera enregistrée sur le poste choisi.</p>
+    <div class="tiles" id="posteGrid"></div>
+  </div>
+</div>
+
+<!-- PIN dialog -->
+<div class="modal" id="pinModal" hidden role="dialog" aria-modal="true" aria-labelledby="pmTitle">
+  <div class="modal-card" id="pmCard">
+    <h2 id="pmTitle"></h2>
+    <p id="pmText"></p>
+    <label for="pmPin" style="position:absolute;left:-9999px">Code PIN</label>
+    <input type="password" id="pmPin" class="pin-input" maxlength="24" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="•••••">
+    <div class="pin-msg" id="pmMsg" role="alert"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="pmNo">Annuler</button>
+      <button type="button" class="btn btn-primary" id="pmYes">Valider</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation dialog -->
+<div class="modal" id="confirm" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="modal-card">
+    <h2 id="cTitle"></h2>
+    <p id="cText"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cNo">Annuler</button>
+      <button type="button" class="btn btn-danger" id="cYes">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
+
+  <!-- Registration page -->
+  <section id="viewReg">
+    <header class="top">
+      <a class="brand" href="#" aria-label="SOS events">
+        <span class="brand-mark">
+          <svg viewBox="0 0 68 8" aria-hidden="true" fill="currentColor"><circle cx="2" cy="4" r="1.7"/><circle cx="8" cy="4" r="1.7"/><circle cx="14" cy="4" r="1.7"/><rect x="20" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="30" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="40" y="2.3" width="7" height="3.4" rx="1.7"/><circle cx="53" cy="4" r="1.7"/><circle cx="59" cy="4" r="1.7"/><circle cx="65" cy="4" r="1.7"/></svg>
+        </span>
+        <span class="brand-name">SOS <span>events</span></span>
+      </a>
+      <div class="top-right">
+        <span class="poste-badge" id="posteBadge"></span>
+        <button type="button" class="btn btn-ghost btn-sm" id="changePoste">Changer de poste</button>
+        <button type="button" class="btn btn-solid btn-sm" id="adminBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          Liste et recettes
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" id="lockBtn">Verrouiller</button>
+      </div>
+    </header>
+
+    <section class="intro">
+      <div class="eyebrow">Inscription</div>
+      <h1>Rejoignez l'événement en deux clics.</h1>
+      <p>Renseignez votre nom, choisissez votre rôle et validez. Votre badge est prêt à imprimer immédiatement.</p>
+    </section>
+
+    <div class="grid">
+      <form class="card" id="reg" novalidate autocomplete="off" onsubmit="return false;">
+        <h2>Formulaire d'inscription</h2>
+        <p class="hint" id="formHint">Nom et prénom obligatoires.</p>
+
+        <div class="fields">
+          <div class="field" id="f-nom">
+            <label for="nom">Nom</label>
+            <input type="text" id="nom" name="nom" placeholder="Benali" maxlength="40" autocomplete="family-name">
+            <span class="err" id="e-nom"></span>
+          </div>
+          <div class="field" id="f-prenom">
+            <label for="prenom">Prénom</label>
+            <input type="text" id="prenom" name="prenom" placeholder="Yasmine" maxlength="40" autocomplete="given-name">
+            <span class="err" id="e-prenom"></span>
+          </div>
+        </div>
+
+        <fieldset>
+          <legend class="legend">Rôle</legend>
+          <div class="roles">
+            <label class="role r-participant"><input type="radio" name="role" value="participant" checked><span class="opt"><i class="dot"></i>Participant</span></label>
+            <label class="role r-organisateur"><input type="radio" name="role" value="organisateur"><span class="opt"><i class="dot"></i>Organisateur</span></label>
+            <label class="role r-sponsor"><input type="radio" name="role" value="sponsor"><span class="opt"><i class="dot"></i>Sponsor</span></label>
+            <label class="role r-invite"><input type="radio" name="role" value="invite"><span class="opt"><i class="dot"></i>Invité</span></label>
+            <label class="role r-remarque wide"><input type="radio" name="role" value="remarque"><span class="opt"><i class="dot"></i>Remarque</span></label>
+          </div>
+        </fieldset>
+
+        <div class="field note-field" id="f-note" hidden>
+          <label for="note">Remarque</label>
+          <textarea id="note" name="note" maxlength="300" rows="3" placeholder="Écrivez ici n'importe quelle remarque"></textarea>
+          <span class="note-count" id="noteCount">0 / 300</span>
+          <span class="err" id="e-note"></span>
+        </div>
+
+        <fieldset class="atelier">
+          <div class="atelier-head">
+            <legend class="legend">Ateliers (facultatif, plusieurs possibles)</legend>
+            <button type="button" class="link-btn" id="atelierAll">Tout cocher</button>
+          </div>
+          <div class="choices">
+            <label class="choice"><input type="checkbox" name="atelier" value="1"><span>Atelier 1</span></label>
+            <label class="choice"><input type="checkbox" name="atelier" value="2"><span>Atelier 2</span></label>
+            <label class="choice"><input type="checkbox" name="atelier" value="3"><span>Atelier 3</span></label>
+            <label class="choice"><input type="checkbox" name="atelier" value="4"><span>Atelier 4</span></label>
+          </div>
+        </fieldset>
+
+        <div class="field amount" id="f-montant">
+          <label for="montant">Paiement : montant payé</label>
+          <div class="suffix">
+            <input type="text" id="montant" name="montant" inputmode="decimal" placeholder="2500" maxlength="12" autocomplete="off">
+            <span>DA</span>
+          </div>
+          <span class="err" id="e-montant"></span>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="submit">S'inscrire</button>
+          <button type="button" class="btn btn-ghost" id="printForm" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M6 14h12v7H6z"/></svg>
+            Imprimer le badge
+          </button>
+        </div>
+      </form>
+
+      <aside class="preview" aria-label="Aperçu du badge">
+        <div class="preview-label">Aperçu du badge</div>
+        <div class="preview-stage"><div class="badge" id="preview"></div></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Records page (PIN required) -->
+  <section id="viewAdmin" hidden>
+    <header class="top">
+      <a class="brand" href="#" aria-label="SOS events">
+        <span class="brand-mark">
+          <svg viewBox="0 0 68 8" aria-hidden="true" fill="currentColor"><circle cx="2" cy="4" r="1.7"/><circle cx="8" cy="4" r="1.7"/><circle cx="14" cy="4" r="1.7"/><rect x="20" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="30" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="40" y="2.3" width="7" height="3.4" rx="1.7"/><circle cx="53" cy="4" r="1.7"/><circle cx="59" cy="4" r="1.7"/><circle cx="65" cy="4" r="1.7"/></svg>
+        </span>
+        <span class="brand-name">SOS <span>events</span></span>
+      </a>
+      <div class="top-right">
+        <button type="button" class="btn btn-ghost btn-sm" id="backBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Retour à l'inscription
+        </button>
+      </div>
+    </header>
+
+    <section class="intro">
+      <div class="eyebrow">Accès réservé</div>
+      <h1>Liste et recettes</h1>
+      <p>Le montant encaissé par chaque poste et la liste de toutes les personnes inscrites.</p>
+    </section>
+
+    <section class="postes-sum" aria-labelledby="pt">
+      <h2 class="sec-title" id="pt">Recettes par poste</h2>
+      <p class="sub">Cliquez sur un poste pour filtrer la liste.</p>
+      <div class="poste-cards" id="posteCards"></div>
+    </section>
+
+    <section class="listing" aria-labelledby="lt">
+      <div class="list-head">
+        <h2 class="sec-title" id="lt">Liste des inscrits<small id="listCount">0</small></h2>
+        <div class="list-tools">
+          <div class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+            <input type="text" id="q" placeholder="Rechercher un nom" aria-label="Rechercher un nom">
+          </div>
+          <button type="button" class="btn btn-solid btn-sm" id="pdfBtn" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+            Enregistrer en PDF
+          </button>
+          <button type="button" class="btn btn-ghost danger btn-sm" id="clearBtn" disabled>Vider la liste</button>
+        </div>
+      </div>
+      <div class="chips-row">
+        <div class="chips" id="chips" role="group" aria-label="Filtrer par rôle"></div>
+        <div class="total"><span>Total encaissé</span><strong id="total">0 DA</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>N°</th><th>Nom complet</th><th>Rôle</th><th>Poste</th><th>Atelier</th><th class="r">Montant</th><th>Remarque</th><th>Inscrit le</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>
+          <svg viewBox="0 0 68 8" fill="currentColor" aria-hidden="true"><circle cx="2" cy="4" r="1.7"/><circle cx="8" cy="4" r="1.7"/><circle cx="14" cy="4" r="1.7"/><rect x="20" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="30" y="2.3" width="7" height="3.4" rx="1.7"/><rect x="40" y="2.3" width="7" height="3.4" rx="1.7"/><circle cx="53" cy="4" r="1.7"/><circle cx="59" cy="4" r="1.7"/><circle cx="65" cy="4" r="1.7"/></svg>
+          <strong id="emptyTitle">Aucun inscrit pour le moment</strong>
+          <span id="emptyText">Les inscriptions apparaîtront ici dès la première validation.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card colors-card" aria-labelledby="ct">
+      <h2 id="ct">Couleurs des rôles</h2>
+      <p class="hint">Choisissez une couleur par rôle. Elle s'applique à la liste et au PDF. Les badges restent sans couleur.</p>
+      <div class="colors" id="colors"></div>
+      <div class="colors-foot"><button type="button" class="btn btn-ghost btn-sm" id="resetColors">Réinitialiser les couleurs</button></div>
+    </section>
+  </section>
+
+  <footer>
+    <span>SOS events</span>
+    <span>Les inscriptions sont enregistrées dans ce navigateur.</span>
+  </footer>
+</div>
+
+<div id="print-sheet" aria-hidden="true"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastBtn" hidden>Imprimer le badge</button></div>
+
+<script>
+(function () {
+  var KEY = 'sos-events-v1';
+  var CKEY = 'sos-events-colors-v1';
+  var PKEY = 'sos-events-poste';
+  var SESSION = 'sos-events-unlocked';
+  var NPOSTES = 6;
+  var HASH = '8bc4986e681567a29721e12d4bf19d35213787f356512af950947b41b8691c08'; /* salted SHA-256 of the PIN */
+  var ROLES = { participant: 'Participant', organisateur: 'Organisateur', sponsor: 'Sponsor', invite: 'Invité', remarque: 'Remarque' };
+  var ROLES_PLURAL = { participant: 'Participants', organisateur: 'Organisateurs', sponsor: 'Sponsors', invite: 'Invités', remarque: 'Remarques' };
+  var DEFAULTS = { participant: '#1F6FEB', organisateur: '#0F9D6B', sponsor: '#D98A00', invite: '#8A3FD1', remarque: '#E0457B' };
+  var KEYS = Object.keys(ROLES);
+
+  var state = { list: [], next: 1, filter: 'all', fposte: 'all', poste: null, query: '', colors: {} };
+  var $ = function (s) { return document.querySelector(s); };
+
+  /* ---------- File saving when the page runs as a shared link (no print dialog there) ---------- */
+  function inArtifact() { return !!(window.claude && typeof window.claude.use === 'function'); }
+  function withDownloads(fn) {
+    var fail = function () { toast('Enregistrement indisponible dans cette vue.'); };
+    try { window.claude.use('downloads').then(function (dl) { if (dl) fn(dl); else fail(); }, fail); } catch (e) { fail(); }
+  }
+  function saveFile(dl, filename, data, okMsg) {
+    dl.save({ filename: filename, data: data }).then(function () { toast(okMsg); }, function (e) {
+      if (e && e.code === 'declined') return;
+      toast('Enregistrement impossible' + (e && e.message ? ' : ' + e.message : '.'));
+    });
+  }
+  /* jsPDF standard fonts only draw Latin text; anything else (Arabic names, for example) needs another route */
+  var NON_LATIN = /[^\u0000-ÿŒœŠšŸŽžƒˆ˜–—‘-‚“-„†-•…‰‹›€™]/;
+  function listHasNonLatin() { return state.list.some(function (p) { return NON_LATIN.test(p.nom + p.prenom + (p.note || '')); }); }
+  function csvCell(v) { v = String(v == null ? '' : v); return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function listCsv() {
+    var rows = [['N°', 'Nom', 'Prénom', 'Rôle', 'Poste', 'Atelier', 'Montant (DA)', 'Remarque', 'Inscrit le']].concat(state.list.map(function (p) {
+      return [pad(p.id), p.nom, p.prenom, ROLES[p.role], p.poste ? 'Poste ' + p.poste : '', atelierLabel(p.atelier), typeof p.montant === 'number' ? String(p.montant).replace('.', ',') : '', p.note || '', fmtDateTime(p.at)];
+    }));
+    return '﻿' + rows.map(function (r) { return r.map(csvCell).join(';'); }).join('\r\n');
+  }
+
+  /* Badge drawn on a canvas: the browser shapes any script correctly, so Arabic names work */
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+  function fitFont(g, text, weight, size, family, maxW, min) {
+    for (;;) { g.font = weight + ' ' + size + 'px ' + family; if (g.measureText(text).width <= maxW || size <= min) break; size -= 1; }
+  }
+  function tracking(g, v) { try { g.letterSpacing = v; } catch (e) {} }
+  function badgeCanvas(d) {
+    var DISPLAY = "'Bricolage Grotesque','Segoe UI',system-ui,sans-serif", MONO = "'JetBrains Mono',ui-monospace,Menlo,monospace";
+    var S = 3, c = document.createElement('canvas'); c.width = 300 * S; c.height = 400 * S;
+    var g = c.getContext('2d'); g.scale(S, S);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 300, 400);
+    g.strokeStyle = '#B8C2D0'; g.lineWidth = 1; g.setLineDash([5, 4]); rr(g, 4, 4, 292, 392, 16); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#D5DCE7'; rr(g, 115, 22, 70, 13, 6.5); g.fill();
+    g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+    var role = (d.role === 'remarque' ? ROLES.invite : ROLES[d.role]).toUpperCase();
+    g.fillStyle = '#0D1B2F'; fitFont(g, d.prenom || '', 800, 46, DISPLAY, 262, 20); g.fillText(d.prenom || '', 150, 150);
+    g.fillStyle = '#5A6B82'; fitFont(g, d.nom || '', 600, 24, DISPLAY, 262, 12); tracking(g, '2px'); g.fillText(d.nom || '', 150, 184); tracking(g, '0px');
+    g.strokeStyle = '#E3E8EF'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(90, 206); g.lineTo(210, 206); g.stroke();
+    g.fillStyle = '#0D1B2F'; fitFont(g, role, 800, 20, DISPLAY, 250, 12); tracking(g, '4px'); g.fillText(role, 150, 238); tracking(g, '0px');
+    var y = 238, at = atelierLabel(d.atelier);
+    if (at) {
+      var label = at.toUpperCase(); fitFont(g, label, 700, 14, DISPLAY, 230, 10); tracking(g, '1.5px');
+      var w = g.measureText(label).width + 28;
+      g.strokeStyle = '#0D1B2F'; g.lineWidth = 1.8; rr(g, 150 - w / 2, y + 14, w, 26, 13); g.stroke();
+      g.fillText(label, 150, y + 32); tracking(g, '0px'); y += 40;
+    }
+    if (typeof d.montant === 'number') {
+      g.fillStyle = '#5A6B82'; g.font = '600 10px ' + MONO; tracking(g, '2px'); g.fillText('MONTANT PAYÉ', 150, y + 36); tracking(g, '0px');
+      var m = fmtMoney(d.montant); g.fillStyle = '#0D1B2F'; fitFont(g, m, 700, 24, MONO, 250, 12); g.fillText(m, 150, y + 64);
+    }
+    g.fillStyle = '#5A6B82'; g.font = '600 11px ' + MONO; g.fillText('N° ' + pad(d.id) + '   ' + fmtDate(d.at || Date.now()), 150, 378);
+    return c;
+  }
+  function saveBadge(d) {
+    withDownloads(function (dl) {
+      var fonts = (document.fonts && document.fonts.load) ? Promise.all([document.fonts.load("800 40px 'Bricolage Grotesque'"), document.fonts.load("600 20px 'Bricolage Grotesque'"), document.fonts.load("700 20px 'JetBrains Mono'")]) : Promise.resolve();
+      fonts.catch(function () {}).then(function () {
+        var c = badgeCanvas(d);
+        var base = 'badge-' + ((d.prenom || '') + '-' + (d.nom || '')).replace(/[\\\/:*?"<>|\s]+/g, '-');
+        var lib = window.jspdf;
+        if (lib && lib.jsPDF) {
+          var doc = new lib.jsPDF({ unit: 'mm', format: [90, 120], orientation: 'portrait' });
+          doc.addImage(c.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 90, 120);
+          saveFile(dl, base + '.pdf', doc.output('arraybuffer'), 'Badge enregistré en PDF. Ouvrez-le pour l\'imprimer.');
+        } else {
+          c.toBlob(function (blob) { if (blob) saveFile(dl, base + '.png', blob, 'Badge enregistré en image. Ouvrez-le pour l\'imprimer.'); });
+        }
+      });
+    });
+  }
+
+  /* ---------- PIN check (SHA-256, so the code is not readable in this file) ---------- */
+  function sha256(str) {
+    var ascii = unescape(encodeURIComponent(str));
+    function rr(v, a) { return (v >>> a) | (v << (32 - a)); }
+    var mathPow = Math.pow, maxWord = mathPow(2, 32), result = '', words = [], bitLen = ascii.length * 8;
+    var hash = [], k = [], primeCounter = 0, composite = {}, i, j;
+    for (var cand = 2; primeCounter < 64; cand++) {
+      if (!composite[cand]) {
+        for (i = 0; i < 313; i += cand) composite[i] = cand;
+        hash[primeCounter] = (mathPow(cand, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(cand, 1 / 3) * maxWord) | 0;
+      }
+    }
+    ascii += '\x80';
+    while (ascii.length % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii.length; i++) { j = ascii.charCodeAt(i); words[i >> 2] |= j << ((3 - i) % 4) * 8; }
+    words[words.length] = (bitLen / maxWord) | 0;
+    words[words.length] = bitLen;
+    for (j = 0; j < words.length;) {
+      var w = words.slice(j, j += 16), oldHash = hash;
+      hash = hash.slice(0, 8);
+      for (i = 0; i < 64; i++) {
+        var w15 = w[i - 15], w2 = w[i - 2], a = hash[0], e = hash[4];
+        var t1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ (~e & hash[6])) + k[i] +
+          (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+        var t2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        hash = [(t1 + t2) | 0].concat(hash);
+        hash[4] = (hash[4] + t1) | 0;
+      }
+      for (i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+    for (i = 0; i < 8; i++) for (j = 3; j + 1; j--) { var b = (hash[i] >> (j * 8)) & 255; result += (b < 16 ? 0 : '') + b.toString(16); }
+    return result;
+  }
+  function pinOk(raw) { return sha256('sos-events:' + String(raw).replace(/\s+/g, '').toUpperCase()) === HASH; }
+
+  /* ---------- Storage ---------- */
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) { var d = JSON.parse(raw); state.list = d.list || []; state.next = d.next || (state.list.length + 1); }
+    } catch (e) {}
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem(CKEY) || '{}') || {}; } catch (e) {}
+    KEYS.forEach(function (k) { state.colors[k] = /^#[0-9a-f]{6}$/i.test(saved[k] || '') ? saved[k] : DEFAULTS[k]; });
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ list: state.list, next: state.next })); } catch (e) {} }
+  function saveColors() { try { localStorage.setItem(CKEY, JSON.stringify(state.colors)); } catch (e) {} }
+
+  /* ---------- Helpers ---------- */
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function cleanSpaces(s) { return s.trim().replace(/\s+/g, ' '); }
+  var CAP_RE;
+  try { CAP_RE = new RegExp("(^|[\\s'’-])(\\p{L})", 'gu'); } catch (e) { CAP_RE = /(^|[\s'’-])([a-zà-ÿ])/gi; }
+  function fmtPrenom(s) { return cleanSpaces(s).toLocaleLowerCase('fr').replace(CAP_RE, function (m, a, b) { return a + b.toLocaleUpperCase('fr'); }); }
+  function fmtNom(s) { return cleanSpaces(s).toLocaleUpperCase('fr'); }
+  /* Ateliers: stored as a sorted array of numbers 1-4. Older entries stored a single number. */
+  function atelierList(v) {
+    var a = Array.isArray(v) ? v : (typeof v === 'number' ? [v] : []);
+    return a.filter(function (n, i) { return n >= 1 && n <= 4 && a.indexOf(n) === i; }).sort();
+  }
+  function atelierLabel(v) {
+    var a = atelierList(v);
+    if (!a.length) return '';
+    return (a.length === 1 ? 'Atelier ' : 'Ateliers ') + a.join(', ');
+  }
+  function cleanNote(s) {
+    return String(s).replace(/\r\n?/g, '\n').split('\n').map(function (l) { return l.trim().replace(/[ \t]+/g, ' '); }).join('\n').replace(/\n{3,}/g, '\n\n').trim().slice(0, 300);
+  }
+  function zpad(v, n) { var s = String(v); while (s.length < n) s = '0' + s; return s; }
+  function pad(n) { return zpad(n, 4); }
+  function fmtMoney(n) {
+    n = Math.round(n * 100) / 100;
+    var parts = n.toFixed(2).split('.');
+    return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (parts[1] === '00' ? '' : ',' + parts[1]) + ' DA';
+  }
+  /* returns null when empty, false when invalid, a number otherwise */
+  function parseMoney(s) {
+    s = String(s).replace(/[\s  ]/g, '').replace(',', '.');
+    if (!s) return null;
+    if (!/^\d+(\.\d{1,2})?$/.test(s)) return false;
+    var n = parseFloat(s);
+    return n > 1e9 ? false : n;
+  }
+  function sumAll() { return state.list.reduce(function (s, p) { return s + (typeof p.montant === 'number' ? p.montant : 0); }, 0); }
+  function fmtDate(ts) { return new Date(ts).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
+  function fmtDateTime(ts) { var d = new Date(ts); return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+  function hexToRgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+  function isLight(h) { var c = hexToRgb(h); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255 > 0.62; }
+  function inkFor(h) { return isLight(h) ? '#0D1B2F' : '#FFFFFF'; }
+
+  /* ---------- Role colors ---------- */
+  function applyColors() {
+    var root = document.documentElement.style;
+    KEYS.forEach(function (k) { root.setProperty('--' + k, state.colors[k]); });
+  }
+  function renderColorPickers() {
+    $('#colors').innerHTML = KEYS.map(function (k) {
+      return '<div class="color-row"><input type="color" id="color-' + k + '" data-role="' + k + '" value="' + state.colors[k] + '" aria-label="Couleur ' + ROLES[k] + '">' +
+        '<div><div class="nm">' + ROLES[k] + '</div><div class="hex" id="hex-' + k + '">' + state.colors[k] + '</div></div></div>';
+    }).join('');
+  }
+
+  /* ---------- Badge ---------- */
+  function badgeHTML(d) {
+    var prenom = d.prenom ? esc(d.prenom) : '<span class="ph">Prénom</span>';
+    var nom = d.nom ? esc(d.nom) : '<span class="ph">NOM</span>';
+    var roleLabel = d.role === 'remarque' ? ROLES.invite : ROLES[d.role];
+    var atelier = atelierList(d.atelier).length ? '<div class="badge-atelier">' + atelierLabel(d.atelier) + '</div>' : '';
+    var paid = typeof d.montant === 'number' ? '<div class="badge-paid"><span>Montant payé</span><strong>' + fmtMoney(d.montant) + '</strong></div>' : '';
+    return '<div class="badge-hole"></div>' +
+      '<div class="badge-body"><div class="badge-first">' + prenom + '</div><div class="badge-last">' + nom + '</div><div class="badge-role">' + roleLabel + '</div>' + atelier + paid + '</div>' +
+      '<div class="badge-foot"><div class="badge-meta"><span>N° ' + (d.id ? pad(d.id) : pad(state.next)) + '</span><span>' + fmtDate(d.at || Date.now()) + '</span></div></div>';
+  }
+  function currentRole() { return document.querySelector('input[name=role]:checked').value; }
+  function currentAtelier() {
+    return atelierList([].slice.call(document.querySelectorAll('input[name=atelier]:checked')).map(function (i) { return parseInt(i.value, 10); }));
+  }
+  function updatePreview() {
+    var d = { prenom: fmtPrenom($('#prenom').value), nom: fmtNom($('#nom').value), role: currentRole(), atelier: currentAtelier(), montant: parseMoney($('#montant').value) };
+    $('#preview').innerHTML = badgeHTML(d);
+    $('#printForm').disabled = !(d.prenom && d.nom);
+    syncAtelierBtn();
+    $('#f-note').hidden = d.role !== 'remarque';
+    $('#noteCount').textContent = $('#note').value.length + ' / 300';
+  }
+  function printBadge(d) {
+    if (inArtifact()) { saveBadge(d); return; }
+    var sheet = $('#print-sheet');
+    sheet.className = '';
+    sheet.innerHTML = '<div class="badge">' + badgeHTML(d) + '</div>';
+    setTimeout(function () { window.print(); }, 60);
+  }
+
+  /* ---------- Toast ---------- */
+  var toastTimer;
+  function toast(msg, action, label) {
+    $('#toastMsg').textContent = msg;
+    var b = $('#toastBtn');
+    b.hidden = !action;
+    if (label) b.textContent = label;
+    b.onclick = action ? function () { action(); $('#toast').classList.remove('show'); } : null;
+    var t = $('#toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('show'); }, action ? 7000 : 3600);
+  }
+  function setErr(field, msg) {
+    $('#f-' + field).classList.toggle('invalid', !!msg);
+    $('#e-' + field).textContent = msg || '';
+  }
+
+  /* ---------- Postes ---------- */
+  function readPoste() {
+    try { var v = parseInt(sessionStorage.getItem(PKEY), 10); return v >= 1 && v <= NPOSTES ? v : null; } catch (e) { return null; }
+  }
+  function posteStats() {
+    var s = [], i;
+    for (i = 1; i <= NPOSTES; i++) s.push({ n: i, count: 0, sum: 0 });
+    state.list.forEach(function (p) {
+      if (p.poste >= 1 && p.poste <= NPOSTES) { s[p.poste - 1].count++; s[p.poste - 1].sum += typeof p.montant === 'number' ? p.montant : 0; }
+    });
+    return s;
+  }
+  function renderPosteUI() {
+    var stats = posteStats();
+    $('#posteCards').innerHTML = stats.map(function (s) {
+      return '<button type="button" class="poste-card" data-poste="' + s.n + '" aria-pressed="' + (state.fposte === s.n) + '">' +
+        '<span class="pc-name">Poste ' + s.n + '</span>' +
+        '<span class="pc-sum">' + fmtMoney(s.sum) + '</span>' +
+        '<span class="pc-count">' + s.count + (s.count > 1 ? ' inscrits' : ' inscrit') + '</span></button>';
+    }).join('');
+    $('#posteGrid').innerHTML = stats.map(function (s) {
+      return '<button type="button" class="tile" data-pick="' + s.n + '"><span class="t-label">Poste</span><span class="t-num">' + s.n + '</span></button>';
+    }).join('');
+    $('#posteBadge').textContent = state.poste ? 'Poste ' + state.poste : '';
+    $('#posteBadge').hidden = !state.poste;
+    $('#formHint').textContent = state.poste ? 'Inscription enregistrée sur le Poste ' + state.poste + '. Nom et prénom obligatoires.' : 'Nom et prénom obligatoires.';
+  }
+  function showView(v) {
+    $('#viewReg').hidden = v !== 'reg';
+    $('#viewAdmin').hidden = v !== 'admin';
+    if (v === 'admin') render();
+    window.scrollTo(0, 0);
+  }
+  function showApp() { $('#postes').hidden = true; $('#app').hidden = false; showView('reg'); }
+  function showPicker() { $('#app').hidden = true; $('#postes').hidden = false; }
+  function enter() { state.poste = readPoste(); renderPosteUI(); if (state.poste) showApp(); else showPicker(); }
+  function choosePoste(n) {
+    state.poste = n;
+    try { sessionStorage.setItem(PKEY, String(n)); } catch (e) {}
+    renderPosteUI(); showApp();
+  }
+
+  /* ---------- Records page ---------- */
+  function counts() {
+    var c = { all: state.list.length };
+    KEYS.forEach(function (k) { c[k] = 0; });
+    state.list.forEach(function (p) { if (c[p.role] !== undefined) c[p.role]++; });
+    return c;
+  }
+  function render() {
+    var c = counts();
+    $('#listCount').textContent = c.all;
+    $('#total').textContent = fmtMoney(sumAll());
+    $('#pdfBtn').disabled = c.all === 0;
+    $('#clearBtn').disabled = c.all === 0;
+    renderPosteUI();
+
+    var defs = [['all', 'Tous']].concat(KEYS.map(function (k) { return [k, ROLES_PLURAL[k]]; }));
+    $('#chips').innerHTML = defs.map(function (d) {
+      return '<button type="button" class="chip" data-f="' + d[0] + '" aria-pressed="' + (state.filter === d[0]) + '">' + d[1] + ' <span class="n">' + c[d[0]] + '</span></button>';
+    }).join('');
+
+    var q = state.query.toLocaleLowerCase('fr');
+    var rows = state.list.filter(function (p) {
+      if (state.filter !== 'all' && p.role !== state.filter) return false;
+      if (state.fposte !== 'all' && p.poste !== state.fposte) return false;
+      if (q && (p.nom + ' ' + p.prenom + ' ' + (p.note || '')).toLocaleLowerCase('fr').indexOf(q) === -1) return false;
+      return true;
+    }).slice().reverse();
+
+    $('#rows').innerHTML = rows.map(function (p) {
+      return '<tr>' +
+        '<td class="num">' + pad(p.id) + '</td>' +
+        '<td class="who">' + esc(p.prenom) + ' <span>' + esc(p.nom) + '</span></td>' +
+        '<td><span class="pill" style="--c:' + state.colors[p.role] + '">' + ROLES[p.role] + '</span></td>' +
+        '<td>' + (p.poste ? '<span class="poste-tag">Poste ' + p.poste + '</span>' : '<span class="dash">—</span>') + '</td>' +
+        '<td>' + (atelierList(p.atelier).length ? '<span class="poste-tag atelier-tag">' + atelierLabel(p.atelier) + '</span>' : '<span class="dash">—</span>') + '</td>' +
+        '<td class="r money">' + (typeof p.montant === 'number' ? fmtMoney(p.montant) : '<span class="dash">—</span>') + '</td>' +
+        '<td class="note-cell">' + (p.note ? esc(p.note) : '<span class="dash">—</span>') + '</td>' +
+        '<td class="when">' + fmtDateTime(p.at) + '</td>' +
+        '<td><div class="row-actions">' +
+          '<button type="button" class="mini" data-print="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M6 14h12v7H6z"/></svg>Badge</button>' +
+          '<button type="button" class="mini del" data-del="' + p.id + '">Supprimer</button>' +
+        '</div></td></tr>';
+    }).join('');
+
+    $('#empty').hidden = rows.length > 0;
+    if (!rows.length) {
+      var none = state.list.length === 0;
+      $('#emptyTitle').textContent = none ? 'Aucun inscrit pour le moment' : 'Aucun résultat';
+      $('#emptyText').textContent = none ? 'Les inscriptions apparaîtront ici dès la première validation.' : 'Modifiez la recherche ou le filtre pour voir d\'autres inscrits.';
+    }
+    document.querySelector('table').style.display = rows.length ? '' : 'none';
+  }
+
+  /* ---------- Dialogs ---------- */
+  var confirmYes = null;
+  function ask(title, text, yesLabel, onYes) {
+    $('#cTitle').textContent = title; $('#cText').textContent = text; $('#cYes').textContent = yesLabel;
+    confirmYes = onYes; $('#confirm').hidden = false; $('#cNo').focus();
+  }
+  function closeAsk() { $('#confirm').hidden = true; confirmYes = null; }
+
+  var pinCb = null, pinTries = 0, pinTimer;
+  function askPin(title, text, onOk, yesLabel, danger) {
+    clearInterval(pinTimer); pinTries = 0; pinCb = onOk;
+    $('#pmTitle').textContent = title; $('#pmText').textContent = text;
+    $('#pmYes').textContent = yesLabel || 'Valider';
+    $('#pmYes').className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+    $('#pmPin').value = ''; $('#pmPin').disabled = false; $('#pmYes').disabled = false; $('#pmMsg').textContent = '';
+    $('#pinModal').hidden = false;
+    setTimeout(function () { $('#pmPin').focus(); }, 30);
+  }
+  function closePin() { clearInterval(pinTimer); $('#pinModal').hidden = true; pinCb = null; }
+  function submitPin() {
+    var v = $('#pmPin').value;
+    if (!v.replace(/\s+/g, '')) { $('#pmMsg').textContent = 'Saisissez le code PIN.'; return; }
+    if (pinOk(v)) { var f = pinCb; closePin(); if (f) f(); return; }
+    pinTries++;
+    var card = $('#pmCard'); card.classList.remove('bad'); void card.offsetWidth; card.classList.add('bad');
+    $('#pmPin').value = '';
+    if (pinTries >= 5) {
+      var left = 30;
+      $('#pmPin').disabled = true; $('#pmYes').disabled = true;
+      $('#pmMsg').textContent = 'Trop d\'essais. Patientez ' + left + ' s.';
+      pinTimer = setInterval(function () {
+        left--;
+        if (left <= 0) { clearInterval(pinTimer); pinTries = 0; $('#pmPin').disabled = false; $('#pmYes').disabled = false; $('#pmMsg').textContent = ''; $('#pmPin').focus(); }
+        else $('#pmMsg').textContent = 'Trop d\'essais. Patientez ' + left + ' s.';
+      }, 1000);
+    } else {
+      var n = 5 - pinTries;
+      $('#pmMsg').textContent = 'Code incorrect. ' + n + (n > 1 ? ' essais restants.' : ' essai restant.');
+      $('#pmPin').focus();
+    }
+  }
+
+  /* ---------- PDF export ---------- */
+  function isoDate() { var d = new Date(); return d.getFullYear() + '-' + zpad(d.getMonth() + 1, 2) + '-' + zpad(d.getDate(), 2); }
+
+  function printListFallback() {
+    var sheet = $('#print-sheet');
+    sheet.className = 'is-list';
+    sheet.innerHTML = '<div class="print-list"><h1>Liste des inscrits</h1><table><thead><tr><th>N°</th><th>Nom</th><th>Prénom</th><th>Rôle</th><th>Poste</th><th>Atelier</th><th>Montant</th><th>Remarque</th><th>Inscrit le</th></tr></thead><tbody>' +
+      state.list.map(function (p) {
+        return '<tr><td>' + pad(p.id) + '</td><td>' + esc(p.nom) + '</td><td>' + esc(p.prenom) + '</td><td style="background:' + state.colors[p.role] + ';color:' + inkFor(state.colors[p.role]) + '">' + ROLES[p.role] + '</td><td>' + (p.poste ? 'Poste ' + p.poste : '-') + '</td><td>' + (atelierLabel(p.atelier) || '-') + '</td><td>' + (typeof p.montant === 'number' ? fmtMoney(p.montant) : '-') + '</td><td>' + (p.note ? esc(p.note) : '-') + '</td><td>' + fmtDateTime(p.at) + '</td></tr>';
+      }).join('') + '</tbody></table><p><strong>Total encaissé : ' + fmtMoney(sumAll()) + '</strong></p></div>';
+    toast('Dans la fenêtre d\'impression, choisissez « Enregistrer au format PDF ».');
+    setTimeout(function () { window.print(); }, 400);
+  }
+
+  function savePDF() {
+    if (!state.list.length) return;
+    var lib = window.jspdf;
+    var doc = lib && lib.jsPDF ? new lib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' }) : null;
+    if (listHasNonLatin() || !doc || typeof doc.autoTable !== 'function') {
+      if (inArtifact()) {
+        withDownloads(function (dl) { saveFile(dl, 'SOS-events-inscrits-' + isoDate() + '.csv', listCsv(), 'Liste enregistrée en CSV (à ouvrir avec Excel), car le PDF ne peut pas écrire certains caractères.'); });
+      } else { printListFallback(); }
+      return;
+    }
+
+    var c = counts();
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(22); doc.setTextColor(13, 27, 47);
+    doc.text('SOS events', 14, 20);
+    doc.setFontSize(13); doc.setTextColor(90, 107, 130);
+    doc.text('Liste des inscrits', 14, 28);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(10);
+    doc.text('Générée le ' + fmtDate(Date.now()) + ' · ' + c.all + (c.all > 1 ? ' inscrits' : ' inscrit'), 14, 34);
+    doc.text(KEYS.map(function (k) { return ROLES_PLURAL[k] + ' : ' + c[k]; }).join('   '), 14, 40);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Total encaissé : ' + fmtMoney(sumAll()), 14, 46);
+    doc.setFont('helvetica', 'normal');
+
+    var list = state.list.slice();
+    doc.autoTable({
+      startY: 52,
+      showFoot: 'lastPage',
+      head: [['N°', 'Nom', 'Prénom', 'Rôle', 'Poste', 'Atelier', 'Montant', 'Remarque', 'Inscrit le']],
+      body: list.map(function (p) { return [pad(p.id), p.nom, p.prenom, ROLES[p.role], p.poste ? 'Poste ' + p.poste : '-', atelierLabel(p.atelier) || '-', typeof p.montant === 'number' ? fmtMoney(p.montant) : '-', p.note || '-', fmtDateTime(p.at)]; }),
+      foot: [['', '', '', 'Total', '', '', fmtMoney(sumAll()), '', '']],
+      footStyles: { fillColor: [232, 237, 245], textColor: [13, 27, 47], fontStyle: 'bold' },
+      styles: { font: 'helvetica', fontSize: 10, cellPadding: 3, textColor: [13, 27, 47], lineColor: [218, 225, 235] },
+      headStyles: { fillColor: [20, 48, 107], textColor: [255, 255, 255] },
+      alternateRowStyles: { fillColor: [247, 249, 252] },
+      columnStyles: { 0: { cellWidth: 16, font: 'courier' } },
+      margin: { left: 14, right: 14, bottom: 18 },
+      didParseCell: function (data) {
+        if (data.column.index === 6) data.cell.styles.halign = 'right';
+        if (data.section === 'body' && data.column.index === 3) {
+          var col = state.colors[list[data.row.index].role];
+          data.cell.styles.fillColor = hexToRgb(col);
+          data.cell.styles.textColor = hexToRgb(inkFor(col));
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    /* Earnings per poste */
+    var pageH = doc.internal.pageSize.getHeight();
+    var y = doc.lastAutoTable.finalY + 14;
+    if (y + 70 > pageH - 20) { doc.addPage(); y = 22; }
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(13, 27, 47);
+    doc.text('Recettes par poste', 14, y);
+    var stats = posteStats();
+    doc.autoTable({
+      startY: y + 4,
+      showFoot: 'lastPage',
+      head: [['Poste', 'Inscrits', 'Montant encaissé']],
+      body: stats.map(function (s) { return ['Poste ' + s.n, String(s.count), fmtMoney(s.sum)]; }),
+      foot: [['Total', String(stats.reduce(function (a, s) { return a + s.count; }, 0)), fmtMoney(stats.reduce(function (a, s) { return a + s.sum; }, 0))]],
+      styles: { font: 'helvetica', fontSize: 10, cellPadding: 3, textColor: [13, 27, 47], lineColor: [218, 225, 235] },
+      headStyles: { fillColor: [20, 48, 107], textColor: [255, 255, 255] },
+      footStyles: { fillColor: [232, 237, 245], textColor: [13, 27, 47], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [247, 249, 252] },
+      tableWidth: 110,
+      didParseCell: function (data) { if (data.column.index > 0) data.cell.styles.halign = 'right'; },
+      margin: { left: 14, right: 14, bottom: 18 }
+    });
+
+    var pages = doc.internal.getNumberOfPages();
+    for (var pg = 1; pg <= pages; pg++) {
+      doc.setPage(pg);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(140, 150, 165);
+      doc.text('SOS events', 14, pageH - 10);
+      doc.text('Page ' + pg + ' / ' + pages, doc.internal.pageSize.getWidth() - 14, pageH - 10, { align: 'right' });
+    }
+    var pdfName = 'SOS-events-inscrits-' + isoDate() + '.pdf', pdfMsg = 'PDF enregistré : ' + c.all + (c.all > 1 ? ' inscrits.' : ' inscrit.');
+    if (inArtifact()) { var buf = doc.output('arraybuffer'); withDownloads(function (dl) { saveFile(dl, pdfName, buf, pdfMsg); }); return; }
+    doc.save(pdfName); toast(pdfMsg);
+  }
+
+  /* ---------- Front PIN screen ---------- */
+  var lockTries = 0, lockTimer;
+  function isUnlocked() { try { return sessionStorage.getItem(SESSION) === '1'; } catch (e) { return false; } }
+  function showLock() {
+    $('#app').hidden = true; $('#postes').hidden = true; $('#pinModal').hidden = true; $('#confirm').hidden = true;
+    clearInterval(lockTimer); lockTries = 0;
+    $('#pin').value = ''; $('#pin').disabled = false; $('#pinGo').disabled = false; $('#pinMsg').textContent = '';
+    $('#lock').hidden = false;
+    setTimeout(function () { $('#pin').focus(); }, 30);
+  }
+  function tryLock() {
+    var v = $('#pin').value;
+    if (!v.replace(/\s+/g, '')) { $('#pinMsg').textContent = 'Saisissez le code PIN.'; return; }
+    if (pinOk(v)) {
+      try { sessionStorage.setItem(SESSION, '1'); } catch (e) {}
+      $('#pin').value = ''; $('#pinMsg').textContent = '';
+      $('#lock').hidden = true;
+      enter();
+      return;
+    }
+    lockTries++;
+    var card = $('#lockCard'); card.classList.remove('bad'); void card.offsetWidth; card.classList.add('bad');
+    $('#pin').value = '';
+    if (lockTries >= 5) {
+      var left = 30;
+      $('#pin').disabled = true; $('#pinGo').disabled = true;
+      $('#pinMsg').textContent = 'Trop d\'essais. Patientez ' + left + ' s.';
+      lockTimer = setInterval(function () {
+        left--;
+        if (left <= 0) { clearInterval(lockTimer); lockTries = 0; $('#pin').disabled = false; $('#pinGo').disabled = false; $('#pinMsg').textContent = ''; $('#pin').focus(); }
+        else $('#pinMsg').textContent = 'Trop d\'essais. Patientez ' + left + ' s.';
+      }, 1000);
+    } else {
+      var n = 5 - lockTries;
+      $('#pinMsg').textContent = 'Code incorrect. ' + n + (n > 1 ? ' essais restants.' : ' essai restant.');
+      $('#pin').focus();
+    }
+  }
+
+  /* ---------- Registration ---------- */
+  function register() {
+    if (!state.poste) { showPicker(); return; }
+    var nom = fmtNom($('#nom').value), prenom = fmtPrenom($('#prenom').value), role = currentRole();
+    var montant = parseMoney($('#montant').value);
+    setErr('nom', nom ? '' : 'Saisissez votre nom.');
+    setErr('prenom', prenom ? '' : 'Saisissez votre prénom.');
+    var note = role === 'remarque' ? cleanNote($('#note').value) : '';
+    var atelier = currentAtelier();
+    setErr('montant', montant === false ? 'Montant invalide. Exemple : 2500 ou 2500,50.' : '');
+    setErr('note', role === 'remarque' && !note ? 'Écrivez la remarque.' : '');
+    if (!nom) { $('#nom').focus(); return; }
+    if (!prenom) { $('#prenom').focus(); return; }
+    if (role === 'remarque' && !note) { $('#note').focus(); return; }
+    if (montant === false) { $('#montant').focus(); return; }
+
+    var dup = state.list.some(function (p) { return p.nom === nom && p.prenom === prenom && p.role === role && (p.note || '') === note && atelierLabel(p.atelier) === atelierLabel(atelier); });
+    if (dup) { setErr('nom', 'Cette personne est déjà inscrite avec ce rôle.'); $('#nom').focus(); return; }
+
+    var entry = { id: state.next++, nom: nom, prenom: prenom, role: role, montant: montant, note: note, atelier: atelier, poste: state.poste, at: Date.now() };
+    state.list.push(entry);
+    save();
+    $('#reg').reset();
+    updatePreview();
+    toast(prenom + ' ' + nom + ' est inscrit(e)' + (montant !== null ? ' · ' + fmtMoney(montant) : '') + '.', function () { printBadge(entry); }, 'Imprimer le badge');
+  }
+
+  /* ---------- Events ---------- */
+  $('#submit').addEventListener('click', register);
+  ['nom', 'prenom', 'montant'].forEach(function (id) {
+    $('#' + id).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); register(); } });
+    $('#' + id).addEventListener('input', function () { setErr(id, ''); updatePreview(); });
+  });
+  document.querySelectorAll('input[name=role]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      updatePreview();
+      if (currentRole() === 'remarque') setTimeout(function () { $('#note').focus(); }, 30);
+    });
+  });
+  $('#note').addEventListener('input', function () { setErr('note', ''); updatePreview(); });
+  function syncAtelierBtn() {
+    var all = document.querySelectorAll('input[name=atelier]').length === document.querySelectorAll('input[name=atelier]:checked').length;
+    $('#atelierAll').textContent = all ? 'Tout décocher' : 'Tout cocher';
+  }
+  document.querySelectorAll('input[name=atelier]').forEach(function (r) { r.addEventListener('change', function () { syncAtelierBtn(); updatePreview(); }); });
+  $('#atelierAll').addEventListener('click', function () {
+    var boxes = document.querySelectorAll('input[name=atelier]');
+    var all = boxes.length === document.querySelectorAll('input[name=atelier]:checked').length;
+    boxes.forEach(function (b) { b.checked = !all; });
+    syncAtelierBtn(); updatePreview();
+  });
+  $('#printForm').addEventListener('click', function () {
+    printBadge({ prenom: fmtPrenom($('#prenom').value), nom: fmtNom($('#nom').value), role: currentRole(), atelier: currentAtelier(), montant: parseMoney($('#montant').value), id: state.next, at: Date.now() });
+  });
+
+  $('#posteGrid').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-pick]'); if (t) choosePoste(+t.getAttribute('data-pick'));
+  });
+  $('#changePoste').addEventListener('click', function () {
+    askPin('Changer de poste', 'Saisissez le code PIN pour changer de poste.', function () {
+      try { sessionStorage.removeItem(PKEY); } catch (e) {}
+      state.poste = null; renderPosteUI(); showPicker();
+    });
+  });
+  $('#adminBtn').addEventListener('click', function () {
+    askPin('Liste et recettes', 'Saisissez le code PIN pour voir les recettes des postes et la liste des inscrits.', function () { showView('admin'); });
+  });
+  $('#backBtn').addEventListener('click', function () { showView('reg'); });
+  $('#pinGo').addEventListener('click', tryLock);
+  $('#pin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); tryLock(); } });
+  $('#pin').addEventListener('input', function () { if (!this.disabled) $('#pinMsg').textContent = ''; });
+  $('#lockBtn').addEventListener('click', function () {
+    try { sessionStorage.removeItem(SESSION); sessionStorage.removeItem(PKEY); } catch (e) {}
+    state.poste = null; renderPosteUI(); showLock();
+  });
+
+  $('#pmYes').addEventListener('click', submitPin);
+  $('#pmNo').addEventListener('click', closePin);
+  $('#pmPin').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); submitPin(); } });
+  $('#pmPin').addEventListener('input', function () { if (!this.disabled) $('#pmMsg').textContent = ''; });
+  $('#pinModal').addEventListener('click', function (e) { if (e.target === this) closePin(); });
+  $('#cNo').addEventListener('click', closeAsk);
+  $('#cYes').addEventListener('click', function () { var f = confirmYes; closeAsk(); if (f) f(); });
+  $('#confirm').addEventListener('click', function (e) { if (e.target === this) closeAsk(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    if (!$('#pinModal').hidden) closePin();
+    else if (!$('#confirm').hidden) closeAsk();
+  });
+
+  $('#colors').addEventListener('input', function (e) {
+    var inp = e.target.closest('input[type=color]'); if (!inp) return;
+    var k = inp.getAttribute('data-role');
+    state.colors[k] = inp.value.toUpperCase();
+    $('#hex-' + k).textContent = state.colors[k];
+    saveColors(); applyColors(); render(); updatePreview();
+  });
+  $('#resetColors').addEventListener('click', function () {
+    KEYS.forEach(function (k) { state.colors[k] = DEFAULTS[k]; });
+    saveColors(); applyColors(); renderColorPickers(); render(); updatePreview();
+    toast('Couleurs réinitialisées.');
+  });
+
+  $('#chips').addEventListener('click', function (e) {
+    var b = e.target.closest('.chip'); if (!b) return;
+    state.filter = b.getAttribute('data-f'); render();
+  });
+  $('#posteCards').addEventListener('click', function (e) {
+    var c = e.target.closest('[data-poste]'); if (!c) return;
+    var n = +c.getAttribute('data-poste');
+    state.fposte = state.fposte === n ? 'all' : n; render();
+  });
+  $('#q').addEventListener('input', function (e) { state.query = e.target.value.trim(); render(); });
+  $('#pdfBtn').addEventListener('click', savePDF);
+
+  $('#clearBtn').addEventListener('click', function () {
+    if (!state.list.length) return;
+    askPin('Vider toute la liste', 'Les ' + state.list.length + ' inscriptions et le total de ' + fmtMoney(sumAll()) + ' seront supprimés. Pensez à enregistrer le PDF avant. Cette action est définitive. Saisissez le code PIN pour confirmer.', function () {
+      state.list = []; state.next = 1; state.filter = 'all'; state.fposte = 'all'; state.query = ''; $('#q').value = '';
+      save(); render(); updatePreview(); toast('La liste a été vidée.');
+    }, 'Tout supprimer', true);
+  });
+  $('#rows').addEventListener('click', function (e) {
+    var pb = e.target.closest('[data-print]');
+    if (pb) {
+      var id = +pb.getAttribute('data-print');
+      var p = state.list.filter(function (x) { return x.id === id; })[0];
+      if (p) printBadge(p);
+      return;
+    }
+    var db = e.target.closest('[data-del]');
+    if (db) {
+      var did = db.getAttribute('data-del');
+      var target = state.list.filter(function (x) { return String(x.id) === did; })[0];
+      if (!target) return;
+      askPin('Supprimer cette inscription', target.prenom + ' ' + target.nom + ' (' + ROLES[target.role] + ') sera retiré(e) de la liste. Saisissez le code PIN pour confirmer.', function () {
+        state.list = state.list.filter(function (x) { return String(x.id) !== did; });
+        save(); render(); toast('Inscription supprimée.');
+      }, 'Supprimer', true);
+    }
+  });
+
+  window.addEventListener('error', function (ev) {
+    try { toast('Erreur : ' + (ev && ev.message ? ev.message : 'inconnue')); } catch (e) {}
+  });
+
+  /* ---------- Start ---------- */
+  try {
+    load();
+    applyColors();
+    renderColorPickers();
+    render();
+    updatePreview();
+    if (isUnlocked()) { $('#lock').hidden = true; enter(); } else { showLock(); }
+  } catch (err) {
+    toast('Erreur au chargement : ' + err.message);
+  }
+})();
+</script>
+</body>
+</html>
